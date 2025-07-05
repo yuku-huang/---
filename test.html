@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>學分計算器</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; line-height: 1.8; }
+    label { display: block; margin-top: 10px; }
+    input { padding: 5px; width: 100%; max-width: 300px; }
+    button { margin-top: 20px; padding: 10px 20px; }
+    #result, #courseImpactResult { margin-top: 20px; font-weight: bold; white-space: pre-line; }
+    .red { color: red; }
+    .green { color: green; }
+    hr { margin: 30px 0; }
+  </style>
+</head>
+<body>
+  <h2>學期成績目標計算器</h2>
+
+  <label>目前總學分：</label>
+  <input type="number" id="currentCredits" placeholder="例如：80">
+
+  <label>目前加權平均分數：</label>
+  <input type="number" id="currentAverage" placeholder="例如：82">
+
+  <label>這學期計劃修習的學分：</label>
+  <input type="number" id="newCredits" placeholder="例如：20">
+
+  <label>目標總平均分數：</label>
+  <input type="number" id="targetAverage" placeholder="例如：84">
+
+  <button onclick="calculate()">計算需要的這學期平均分數</button>
+
+  <div id="result"></div>
+
+  <hr>
+
+  <h3>單一課程分數影響評估</h3>
+
+  <label>該課學分：</label>
+  <input type="number" id="courseCredits" placeholder="例如：3">
+
+  <label>預估該課分數：</label>
+  <input type="number" id="courseGrade" placeholder="例如：90">
+
+  <button onclick="evaluateCourseImpact()">評估這堂課的影響</button>
+
+  <div id="courseImpactResult"></div>
+
+  <script>
+    let lastRequiredAvg = null;
+
+    function calculate() {
+      const currentCredits = parseFloat(document.getElementById('currentCredits').value);
+      const currentAverage = parseFloat(document.getElementById('currentAverage').value);
+      const newCredits = parseFloat(document.getElementById('newCredits').value);
+      const targetAverage = parseFloat(document.getElementById('targetAverage').value);
+
+      if (isNaN(currentCredits) || isNaN(currentAverage) || isNaN(newCredits) || isNaN(targetAverage)) {
+        document.getElementById('result').innerText = '請填寫所有欄位';
+        return;
+      }
+
+      const totalCredits = currentCredits + newCredits;
+      const totalRequiredScore = targetAverage * totalCredits;
+      const currentScore = currentAverage * currentCredits;
+      const requiredThisSemesterScore = totalRequiredScore - currentScore;
+      const requiredAverageThisSemester = requiredThisSemesterScore / newCredits;
+
+      lastRequiredAvg = requiredAverageThisSemester;
+
+      document.getElementById('result').innerText =
+        `這學期平均需要達到：${requiredAverageThisSemester.toFixed(2)} 分`;
+    }
+
+    function evaluateCourseImpact() {
+      const courseCredits = parseFloat(document.getElementById('courseCredits').value);
+      const courseGrade = parseFloat(document.getElementById('courseGrade').value);
+
+      const currentCredits = parseFloat(document.getElementById('currentCredits').value);
+      const currentAverage = parseFloat(document.getElementById('currentAverage').value);
+      const newCredits = parseFloat(document.getElementById('newCredits').value);
+
+      if (
+        isNaN(courseCredits) || isNaN(courseGrade) ||
+        isNaN(currentCredits) || isNaN(currentAverage) || isNaN(newCredits)
+      ) {
+        document.getElementById('courseImpactResult').innerText = '請確保所有欄位都正確填寫';
+        return;
+      }
+
+      if (!lastRequiredAvg) {
+        document.getElementById('courseImpactResult').innerText = '請先計算這學期目標平均分數';
+        return;
+      }
+
+      const remainingCredits = newCredits - courseCredits;
+      if (remainingCredits <= 0) {
+        document.getElementById('courseImpactResult').innerText = '課程學分不能大於或等於這學期總學分';
+        return;
+      }
+
+      // 1️⃣ 對這學期平均的貢獻
+      const totalRequiredThisSemesterScore = newCredits * lastRequiredAvg;
+      const knownCourseScore = courseCredits * courseGrade;
+      const requiredAvgForOtherCourses = (totalRequiredThisSemesterScore - knownCourseScore) / remainingCredits;
+
+      // 2️⃣ 對總平均的影響
+      const totalScoreBefore = currentAverage * currentCredits;
+      const totalScoreAfter = totalScoreBefore + courseCredits * courseGrade;
+      const newTotalCredits = currentCredits + courseCredits;
+      const newOverallAverage = totalScoreAfter / newTotalCredits;
+      const overallAvgDiff = newOverallAverage - currentAverage;
+
+      const impactColor = overallAvgDiff >= 0 ? 'red' : 'green';
+      const impactText = overallAvgDiff >= 0 ? '上升' : '下降';
+
+      document.getElementById('courseImpactResult').innerHTML =
+        `🎯 若這堂課得 ${courseGrade} 分，占 ${courseCredits} 學分：<br>` +
+        `➤ 要達成這學期平均 ${lastRequiredAvg.toFixed(2)} 分，其他 ${remainingCredits} 學分需平均：${requiredAvgForOtherCourses.toFixed(2)} 分<br>` +
+        `➤ 對總平均的影響：<span class="${impactColor}">${impactText} ${Math.abs(overallAvgDiff).toFixed(2)} 分</span>（新總平均：約 ${newOverallAverage.toFixed(2)}）`;
+    }
+  </script>
+</body>
+</html>
